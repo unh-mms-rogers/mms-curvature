@@ -3,6 +3,7 @@
 __pycache__/
 data/
 pydata/
+*.egg-info/
 
 #Stop including edit swap files by accident.
 .swp

@@ -3,38 +3,6 @@ python3 + numpy routine to calculate magnetic curvature from MMS data.
 
 Uses pyspedas for MMS data file loading
 
-*****************************************************************************
-Example script for loading required data and calculating the curvature vector:
-    
-import time
-import re
-import numpy as np
-from mms_curvature import DataLoad, mms_Grad, mms_Curvature
-
-timeStart =  time.strftime("%H:%M:%S", time.localtime())
-print("Files Loading:")
-
-data,metadata = DataLoad(trange=['2017-05-04', '2017-05-05'])
-postimes = [data['mec'][n]['x'] for n in data['mec'] if re.compile('mms\d_mec_r_gsm_srvy_l2').match(n)]
-posvalues = [data['mec'][n]['y'] for n in data['mec'] if re.compile('mms\d_mec_r_gsm_srvy_l2').match(n)]
-magtimes = [data['fgm'][n]['x'] for n in data['fgm'] if re.compile('mms\d_fgm_b_gsm_srvy_l2').match(n)]
-magvalues = [data['fgm'][n]['y'] for n in data['fgm'] if re.compile('mms\d_fgm_b_gsm_srvy_l2').match(n)]
-
-print("Time started: ", timeStart)
-print("Time Loaded: ", time.strftime("%H:%M:%S", time.localtime()))
-
-grad_Harvey, bm, bmag, rm, t_master = mms_Grad(postimes, posvalues, magtimes, magvalues)
-curve_Harvey = mms_Curvature(grad_Harvey, bm)
-
-np.savetxt("t_master.csv", t_master, delimiter=",")
-np.savetxt("curve_Harvey.csv", curve_Harvey, delimiter=",")
-np.save("grad_Harvey.npy", grad_Harvey)
-
-# end
-****************************************************************************
-
----TJR 10.09.2020
-
 Copyright 2020-2022 Anthony Rogers.  All rights reserved.
 Released under the Apache 2.0 license.
 
@@ -359,31 +327,54 @@ def mms_Grad(postimes=None, posvalues=None, magtimes=None, magvalues=None, norma
 
 def mms_Curvature(grad, bm):
     '''
-    function to calculate magnetic field line curvature vector k = b · grad(b) from the
-    magnetic field spacial gradient (grad) and the normalized magnetic field vector at 
-    the barycenter of the spacecraft formation (bm)
+    Calculate magnetic field line curvature vector k = b · grad(b) from the magnetic field spacial 
+    gradient (grad) and the normalized magnetic field vector at the barycenter of the spacecraft 
+    formation (bm).
 
-    Inputs:
-    grad    : a time series array with dimensions t x 3 x 3 representing the spacial
-              gradient of the normalized magnetic field grad(b) at each time step.
-              Assumed to be the output from the mms_Grad function described in this 
-              library module.
+    Parameters
+    ----------
+    grad: np.ndarray
+        A time series array with shape (n_times, 3, 3) representing the spacial
+        gradient of the normalized magnetic field grad(b) at each time step.
+        Assumed to be the output from ``mms_curvature.mms_Grad()``.
+    bm: np.ndarray
+        A time series array with shape (n_times, 3) representing the normalized 
+        vector magnetic field b = B/|B| at each time step.  Assumed to be the
+        output of the ``mms_curvature.mms_Grad()``.
 
-    bm      : a time series array with dimensions t x 3 representing the normalized 
-              vector magnetic field b = B/|B| at each time step.  Assumed to be the
-              output of the mms_Grad function described in this library.
+    Returns
+    -------
+    np.array
+        Harvey magnetic field line curvature vector with shape (n_times, 3).
 
-    ---NB: 'grad' and 'bm' are assumed to have identical timesteps, beginning, and 
-           ending times, as expected from the outputs of the mms_Grad function 
-           described in this library.
+    Example
+    -------
+    import time
+    import re
 
-    Outputs:
-    curve_Harvey    : a time series array with dimensions t x 3 representing the 
-                      magnetic field line curvature vector in 3 dimensions at the
-                      same time steps as used for the input arrays.
+    import numpy as np
+    import pytplot
+
+    from mms_curvature import DataLoad, mms_Grad, mms_Curvature
+
+    start_time =  time.time()
+    print("Files Loading:")
+
+    data = DataLoad(trange=['2017-05-04', '2017-05-05'])
+    postimes = [pytplot.get_data(n).times for n in data['mec'] if re.compile('mms\d_mec_r_gsm').match(n)]
+    posvalues = [pytplot.get_data(n).y for n in data['mec'] if re.compile('mms\d_mec_r_gsm').match(n)]
+    magtimes = [pytplot.get_data(n).times for n in data['fgm'] if re.compile('mms\d_fgm_b_gsm_srvy_l2_bvec').match(n)]
+    magvalues = [pytplot.get_data(n).y for n in data['fgm'] if re.compile('mms\d_fgm_b_gsm_srvy_l2_bvec').match(n)]
+
+    print(f'MMS MEC and FGM data loaded in {time.time()-start_time :.0f} seconds.')
+
+    grad_Harvey, bm, bmag, rm, t_master = mms_Grad(postimes, posvalues, magtimes, magvalues)
+    curve_Harvey = mms_Curvature(grad_Harvey, bm)
+
+    np.savetxt("t_master.csv", t_master, delimiter=",")
+    np.savetxt("curve_Harvey.csv", curve_Harvey, delimiter=",")
+    np.save("grad_Harvey.npy", grad_Harvey)
     '''
-
-
     # And now the final curvature may be calculated by simple matrix multiplication for each timestep.
     # The below gives identical results as, but is much more efficient than: 
     #   for t in range(t_master.shape[0]): curve_Harvey[t] = np.matmul(grad_Harvey[t], bm[t])

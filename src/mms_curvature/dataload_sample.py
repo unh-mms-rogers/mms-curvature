@@ -3,8 +3,7 @@
 
 # This file is retained only for historical reference.
 
-from . import mms_load_data_shims as shims
-import logging
+import pyspedas
 
 def DataLoad(trange=['2017-05-01', '2017-05-02/15:30:02'], data_rate='srvy', level='l2'):
     '''
@@ -22,22 +21,19 @@ def DataLoad(trange=['2017-05-01', '2017-05-02/15:30:02'], data_rate='srvy', lev
                 Options are 'srvy', 'brst'
 
     level:      The data level which will be loaded.  Use 'l2' unless you're sure otherwise.
-
     '''
-    
-    logging.info('Start parallel DataLoad.')
-    # load data files from SDC/local storage into tplot variables
-    mec_data,mec_metadata = shims.mms_load_mec(trange=trange, probe=['1', '2', '3', '4'], data_rate='srvy', level=level, time_clip=True)
-    fgm_data,fgm_metadata = shims.mms_load_fgm(trange=trange, probe=['1', '2', '3', '4'], data_rate=data_rate, level=level, time_clip=True)
-    logging.info('Returning from parallel DataLoad.')
-    # This  is just a convenient structure for returning the imported data.
-    return {
-        "data": {
-                    "mec": mec_data,
-                    "fgm": fgm_data
-                },
-        "metadata": {
-                    "mec": mec_metadata,
-                    "fgm": fgm_metadata
-                }
-    }
+    mec_data = pyspedas.mms.mec(
+        trange=trange, 
+        probe=['1', '2', '3', '4'], 
+        data_rate='srvy', 
+        level=level, 
+        time_clip=True
+    )
+    fgm_data = pyspedas.mms.fgm(
+        trange=trange, 
+        probe=['1', '2', '3', '4'], 
+        data_rate=data_rate, 
+        level=level, 
+        time_clip=True
+        )
+    return {"mec": mec_data, "fgm": fgm_data}

@@ -1,5 +1,5 @@
-requests
-cdflib
-numpy
-python-dateutil
-pandas
+requests==2.31.0
+cdflib==0.4.9
+numpy==1.26.0
+pandas==2.1.1
+pyspedas==1.4.44
